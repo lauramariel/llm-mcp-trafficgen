@@ -41,6 +41,9 @@ async def drain_results(
 
 async def async_main(config_path: str) -> None:
     cfg = load_config(config_path)
+    # Summarize configured LLMs and MCP servers before establishing connections
+    logger.info("Configured LLMs: %s", [llm.name for llm in cfg.llms])
+    logger.info("Configured MCP servers: %s", [mcp.name for mcp in cfg.mcp_servers])
 
     connector = aiohttp.TCPConnector(limit=0)
     async with aiohttp.ClientSession(connector=connector) as session:
