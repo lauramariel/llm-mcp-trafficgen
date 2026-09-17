@@ -58,21 +58,38 @@ class MCPClient:
             session_id = resp.headers.get("Mcp-Session-Id")
             if session_id:
                 self._session_id = session_id
+                logger.info("Received MCP session ID: %s", session_id)
             if notification:
                 resp.raise_for_status()
                 return None
             # For standard calls, ensure success status and parse JSON safely.
             resp.raise_for_status()
-            # Attempt to parse JSON; if the body is empty or not JSON, treat as empty dict.
-            try:
-                data = await resp.json(content_type=None)
-            except Exception as exc:
-                # aiohttp raises ContentTypeError for non‑JSON, and json.JSONDecodeError for empty body.
-                from json import JSONDecodeError
-                if isinstance(exc, JSONDecodeError) or getattr(exc, "status", None) == 204:
-                    data = {}
-                else:
-                    raise
+            # Handle normal JSON responses and Server‑Sent Event streams.
+            content_type = resp.headers.get("Content-Type", "").lower()
+            if "event-stream" in content_type:
+                # Read the event stream, locate the last 'data:' line which contains the JSON payload.
+                text = await resp.text()
+                data = {}
+                for line in reversed(text.splitlines()):
+                    if line.startswith("data:"):
+                        json_str = line[len("data:"):].strip()
+                        try:
+                            import json
+                            data = json.loads(json_str)
+                        except Exception:
+                            data = {}
+                        break
+            else:
+                # Attempt to parse JSON; if the body is empty or not JSON, treat as empty dict.
+                try:
+                    data = await resp.json(content_type=None)
+                except Exception as exc:
+                    # aiohttp raises ContentTypeError for non‑JSON, and json.JSONDecodeError for empty body.
+                    from json import JSONDecodeError
+                    if isinstance(exc, JSONDecodeError) or getattr(exc, "status", None) == 204:
+                        data = {}
+                    else:
+                        raise
 
         if isinstance(data, dict) and data.get("error"):
             raise MCPError(f"MCP server '{self.cfg.name}' error calling {method}: {data['error']}")
