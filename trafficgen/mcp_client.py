@@ -37,6 +37,9 @@ class MCPClient:
         api_key = self.cfg.resolve_api_key()
         if api_key:
             headers["Authorization"] = f"Bearer {api_key}"
+            logger.info("API key provided for MCP authentication")
+        else:
+            logger.info("No API key passed")
         if self._session_id:
             headers["Mcp-Session-Id"] = self._session_id
         headers.update(self.cfg.extra_headers)
@@ -58,8 +61,19 @@ class MCPClient:
             if notification:
                 resp.raise_for_status()
                 return None
+            # For standard calls, ensure success status and parse JSON safely.
             resp.raise_for_status()
-            data = await resp.json(content_type=None)
+            # Attempt to parse JSON; if the body is empty or not JSON, treat as empty dict.
+            try:
+                data = await resp.json(content_type=None)
+            except Exception as exc:
+                # aiohttp raises ContentTypeError for non‑JSON, and json.JSONDecodeError for empty body.
+                from json import JSONDecodeError
+                if isinstance(exc, JSONDecodeError) or getattr(exc, "status", None) == 204:
+                    data = {}
+                else:
+                    raise
+
         if isinstance(data, dict) and data.get("error"):
             raise MCPError(f"MCP server '{self.cfg.name}' error calling {method}: {data['error']}")
         return (data or {}).get("result") if isinstance(data, dict) else data
