@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Local config/secrets - never commit real API keys
+config.yaml
+prompts.txt
+*.env
+
+# Runtime output
+trafficgen_log.jsonl
+*.jsonl

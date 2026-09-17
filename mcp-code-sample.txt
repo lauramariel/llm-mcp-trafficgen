@@ -1,0 +1,15 @@
+curl -k -X POST 'https://nai.tmelab.net/enterpriseai/gateway/mcp/demo-crm-conn' \
+  -H "Authorization: Bearer $API_KEY" \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "method": "initialize",
+    "params": {
+      "capabilities": {},
+      "clientInfo": {
+        "name": "curl-client",
+        "version": "0.1"
+      }
+    },
+    "jsonrpc": "2.0",
+    "id": 0
+  }'

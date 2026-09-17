@@ -1,0 +1,49 @@
+# Example config for llm-mcp-trafficgen.
+# Copy to config.yaml (or point --config at your own copy) and fill in real values.
+# API keys can be given inline (api_key) or via an environment variable name
+# (api_key_env) -- prefer api_key_env so secrets don't live in the file.
+
+llms:
+  - name: uep-nai
+    base_url: https://nai.tmelab.net/enterpriseai/gateway/v1
+    chat_path: /chat/completions
+    model: uep-nai
+    api_key_env: NAI_API_KEY
+    verify_ssl: false          # sample curl uses -k (self-signed/internal CA)
+    # Per-LLM overrides of the global traffic settings below (optional):
+    # requests_per_second: 2.0
+    # concurrency: 3
+
+  # - name: another-llm
+  #   base_url: https://some-other-gateway/v1
+  #   model: some-model-id
+  #   api_key_env: OTHER_API_KEY
+
+mcp_servers:
+  - name: demo-crm
+    base_url: https://nai.tmelab.net/enterpriseai/gateway/mcp/demo-crm-conn
+    api_key_env: MCP_CRM_API_KEY
+    verify_ssl: false
+
+  # - name: another-mcp
+  #   base_url: https://some-other-gateway/mcp/other-conn
+  #   api_key_env: OTHER_MCP_API_KEY
+
+# All configured MCP servers' tools are exposed to every configured LLM.
+
+traffic:
+  requests_per_second: 1.0     # default rate per LLM, unless overridden per-LLM above
+  concurrency: 2                # default number of concurrent in-flight workers per LLM
+  duration_seconds: 300          # stop after 5 minutes; omit/null to run until Ctrl+C
+  # total_requests: 100          # alternative/additional stop condition, per LLM
+  max_tool_call_rounds: 5        # cap on tool-call round trips per conversation
+  request_timeout_seconds: 60.0
+
+prompts:
+  file: prompts.example.txt
+  # list:
+  #   - "Explain Deep Neural Networks in simple terms"
+
+output:
+  log_file: trafficgen_log.jsonl
+  summary_interval_seconds: 10.0

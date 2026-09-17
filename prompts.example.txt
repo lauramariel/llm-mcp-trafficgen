@@ -1,0 +1,6 @@
+# One prompt per line. Lines starting with # are ignored.
+Explain Deep Neural Networks in simple terms
+Look up the account details for customer ACME Corp
+What open opportunities exist in the CRM right now?
+Summarize the last 5 support tickets for this account
+What is the capital of France?

@@ -1,0 +1,15 @@
+
+curl -k -X 'POST' 'https://nai.tmelab.net/enterpriseai/gateway/v1/chat/completions' \
+ -H "Authorization: Bearer $API_KEY" \
+ -H 'accept: application/json' \
+ -H 'Content-Type: application/json' \
+ -d '{
+      "model": "uep-nai",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Explain Deep Neural Networks in simple terms"
+        }
+      ],
+      "stream": false
+}'
