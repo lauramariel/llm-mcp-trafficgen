@@ -2,7 +2,10 @@
 from __future__ import annotations
 
 import asyncio
+import base64
+import binascii
 import collections
+import hmac
 import logging
 import os
 import time
@@ -19,6 +22,27 @@ from .metrics import MetricsCollector
 logger = logging.getLogger(__name__)
 
 STATIC_DIR = Path(__file__).parent / "static"
+PASSWORD_ENV = "TRAFFICGEN_UI_PASSWORD"
+
+
+def password_middleware(password: str):
+    """HTTP Basic auth with a single shared password; the username is ignored.
+    The browser shows its own login prompt and remembers it for the session."""
+    expected = password.encode("utf-8")
+
+    @web.middleware
+    async def check(request: web.Request, handler):
+        scheme, _, encoded = request.headers.get("Authorization", "").partition(" ")
+        if scheme.lower() == "basic":
+            try:
+                _user, _, given = base64.b64decode(encoded, validate=True).decode("utf-8").partition(":")
+            except (binascii.Error, UnicodeDecodeError):
+                given = ""
+            if hmac.compare_digest(given.encode("utf-8"), expected):
+                return await handler(request)
+        raise web.HTTPUnauthorized(headers={"WWW-Authenticate": 'Basic realm="trafficgen", charset="UTF-8"'})
+
+    return check
 
 
 class LogBuffer(logging.Handler):
@@ -118,11 +142,11 @@ def _clean(value: Any) -> Any:
     return value
 
 
-def build_app(config_path: str) -> web.Application:
+def build_app(config_path: str, password: str | None = None) -> web.Application:
     runner = RunManager(config_path)
     log_buffer = LogBuffer()
     logging.getLogger().addHandler(log_buffer)
-    app = web.Application()
+    app = web.Application(middlewares=[password_middleware(password)] if password else [])
 
     async def index(_request: web.Request) -> web.FileResponse:
         return web.FileResponse(STATIC_DIR / "index.html")
@@ -179,5 +203,12 @@ def build_app(config_path: str) -> web.Application:
 def serve(config_path: str, host: str, port: int) -> None:
     # Keep aiohttp's per-request access log out of the console and the UI log view.
     logging.getLogger("aiohttp.access").setLevel(logging.WARNING)
+    password = os.environ.get(PASSWORD_ENV) or None
     print(f"trafficgen UI: http://{host}:{port}  (editing {os.path.abspath(config_path)})")
-    web.run_app(build_app(config_path), host=host, port=port, print=None)
+    if password:
+        print(f"Password protection is on ({PASSWORD_ENV}).")
+    else:
+        logger.warning(
+            "No %s set: anyone who can reach this UI can edit the config and start traffic.", PASSWORD_ENV
+        )
+    web.run_app(build_app(config_path, password), host=host, port=port, print=None)
