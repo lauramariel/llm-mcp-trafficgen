@@ -23,6 +23,8 @@ gateways, giving each LLM tool access to one or more MCP servers.
 
 ## Setup
 
+Requires Python 3.11+ (or use Docker, below).
+
 ```bash
 pip install -r requirements.txt
 cp config.example.yaml config.yaml
@@ -41,9 +43,56 @@ name (`api_key_env: SOME_ENV_VAR`).
 python -m trafficgen --config config.yaml
 ```
 
-Stop anytime with Ctrl+C; it will drain in-flight requests, print a final
-summary, and exit. Traffic also stops automatically once `duration_seconds`
+Stop anytime with Ctrl+C: it stops sending new requests, gives in-flight
+requests up to 5 seconds to finish, prints a final summary, and exits. Press
+Ctrl+C a second time to cancel in-flight requests immediately. Traffic also stops automatically once `duration_seconds`
 and/or `total_requests` (configured under `traffic:`) is reached.
+
+### Web UI
+
+```bash
+python -m trafficgen --ui --config config.yaml   # then open http://127.0.0.1:8080
+```
+
+A local page for editing the config as a form (LLMs, MCP servers, traffic,
+prompts, output) instead of hand-editing YAML. "Save" validates the config
+and writes it back to the `--config` file. "Save & start" also starts a run,
+and the page shows live per-LLM stats and the log. Use `--port`/`--host` to
+change where it listens. It binds to localhost by default, because anyone who
+can reach it can edit the config and start traffic.
+
+**Password:** set `TRAFFICGEN_UI_PASSWORD` to require a password. The browser
+asks for it on first visit (leave the username blank, or type anything). Without
+it, anyone who can reach the UI can edit the config, start traffic, and read
+any inline `api_key` values; the server logs a warning at startup. The UI is
+plain HTTP, so the password crosses the network unencrypted; put it behind an
+HTTPS reverse proxy if that matters on your network.
+
+Note: saving from the UI rewrites the YAML file, so comments in it are lost.
+For API keys, use `api_key_env`; the UI shows whether each variable is set in
+the environment the UI server was started from.
+
+## Docker
+
+```bash
+cp config.example.yaml config.yaml        # if you haven't already
+echo "NAI_API_KEY=..." >> .env            # keys named by api_key_env
+echo "TRAFFICGEN_UI_PASSWORD=..." >> .env # password for the UI
+docker compose up --build                 # UI at http://127.0.0.1:8080
+```
+
+The current directory is mounted at `/data` in the container, so the UI
+reads and saves `./config.yaml`, prompts files are found next to it, and the
+JSONL log is written here too. API keys come from `.env`, which is gitignored.
+The UI is published on port 8080 on all of the host's network interfaces, so
+others on the network can open `http://<host>:8080`. To keep it to the host
+only, change the port mapping in `docker-compose.yml` to `127.0.0.1:8080:8080`.
+
+To run traffic directly without the UI (Ctrl+C works the same as above):
+
+```bash
+docker compose run --rm trafficgen --config /data/config.yaml
+```
 
 ## Config reference
 

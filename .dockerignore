@@ -1,0 +1,4 @@
+*
+!requirements.txt
+!trafficgen/
+**/__pycache__

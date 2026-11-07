@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -102,11 +102,18 @@ def _dc_from_dict(cls, data: dict[str, Any]):
     return cls(**data)
 
 
-def load_config(path: str) -> AppConfig:
-    config_path = Path(path)
-    with open(config_path, "r", encoding="utf-8") as f:
-        raw = yaml.safe_load(f) or {}
+def default_config_dict() -> dict[str, Any]:
+    """Skeleton config with every section present, used by the UI when no file exists yet."""
+    return {
+        "llms": [],
+        "mcp_servers": [],
+        "traffic": asdict(TrafficConfig()),
+        "prompts": {"file": None, "list": []},
+        "output": asdict(OutputConfig()),
+    }
 
+
+def parse_config(raw: dict[str, Any], base_dir: Path) -> AppConfig:
     llms_raw = raw.get("llms") or []
     if not llms_raw:
         raise ValueError("Config must define at least one entry under 'llms'")
@@ -118,8 +125,17 @@ def load_config(path: str) -> AppConfig:
     traffic = _dc_from_dict(TrafficConfig, raw.get("traffic") or {})
 
     prompts_cfg = _dc_from_dict(PromptsConfig, raw.get("prompts") or {})
-    prompts = prompts_cfg.load(config_path.parent)
+    prompts = prompts_cfg.load(base_dir)
 
     output = _dc_from_dict(OutputConfig, raw.get("output") or {})
 
     return AppConfig(llms=llms, mcp_servers=mcp_servers, traffic=traffic, prompts=prompts, output=output)
+
+
+def read_config_dict(path: str) -> dict[str, Any]:
+    with open(path, "r", encoding="utf-8") as f:
+        return yaml.safe_load(f) or {}
+
+
+def load_config(path: str) -> AppConfig:
+    return parse_config(read_config_dict(path), Path(path).parent)

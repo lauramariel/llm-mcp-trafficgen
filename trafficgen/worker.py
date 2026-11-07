@@ -5,6 +5,7 @@ import logging
 import random
 import time
 from dataclasses import dataclass, field
+from typing import Callable
 
 import aiohttp
 
@@ -53,7 +54,7 @@ async def llm_worker(
     traffic: TrafficConfig,
     prompts: list[str],
     tools: ToolRegistry,
-    results_queue: "asyncio.Queue[RequestResult]",
+    on_result: Callable[[RequestResult], None],
     stop_event: asyncio.Event,
     counters: dict[str, int],
     counters_lock: asyncio.Lock,
@@ -85,8 +86,8 @@ async def llm_worker(
                 tool_calls=outcome["tool_calls"],
                 content=str(outcome.get("content"))[:200],
             )
-        except (LLMRequestError, aiohttp.ClientError, asyncio.TimeoutError) as exc:
+        except (LLMRequestError, aiohttp.ClientError, asyncio.TimeoutError, ValueError, KeyError) as exc:
             latency = time.monotonic() - start
             result = RequestResult(llm_name=llm.name, ok=False, latency_seconds=latency, error=str(exc))
             logger.warning("Request failed for LLM '%s': %s", llm.name, exc)
-        await results_queue.put(result)
+        on_result(result)

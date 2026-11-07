@@ -27,6 +27,20 @@ class MetricsCollector:
             self._fh.write(json.dumps(asdict(result)) + "\n")
             self._fh.flush()
 
+    def snapshot(self) -> dict[str, dict[str, Any]]:
+        out = {}
+        for name, stats in self.per_llm.items():
+            latencies = sorted(stats["latencies"])
+            n = len(latencies)
+            out[name] = {
+                "sent": stats["count"],
+                "errors": stats["errors"],
+                "tool_calls": stats["tool_calls"],
+                "p50": latencies[int(n * 0.5)] if n else None,
+                "p95": latencies[min(int(n * 0.95), n - 1)] if n else None,
+            }
+        return out
+
     def summary_line(self) -> str:
         if not self.per_llm:
             return "no requests yet"

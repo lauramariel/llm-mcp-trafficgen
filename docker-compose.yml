@@ -1,0 +1,18 @@
+services:
+  trafficgen:
+    build: .
+    image: llm-mcp-trafficgen
+    # Reachable from other machines on the network at http://<this-host>:8080.
+    # Set TRAFFICGEN_UI_PASSWORD in .env to require a password; without it,
+    # anyone who can reach the UI can edit the config and start traffic.
+    # Use "127.0.0.1:8080:8080" to limit it to this machine.
+    ports:
+      - "8080:8080"
+    # config.yaml, prompts files and trafficgen_log.jsonl are read/written here.
+    volumes:
+      - ./:/data
+    # API keys referenced by api_key_env in config.yaml (e.g. NAI_API_KEY=...)
+    # and the UI password (TRAFFICGEN_UI_PASSWORD=...).
+    env_file:
+      - path: .env
+        required: false
