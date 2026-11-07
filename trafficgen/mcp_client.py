@@ -25,9 +25,10 @@ class MCPClient:
     calls. If the gateway doesn't use sessions at all, this is simply a no-op.
     """
 
-    def __init__(self, cfg: MCPServerConfig, session: aiohttp.ClientSession):
+    def __init__(self, cfg: MCPServerConfig, session: aiohttp.ClientSession, timeout_seconds: float = 60.0):
         self.cfg = cfg
         self._session = session
+        self._timeout = aiohttp.ClientTimeout(total=timeout_seconds)
         self._id_counter = itertools.count(1)
         self._session_id: str | None = None
         self.tools: list[dict[str, Any]] = []
@@ -53,6 +54,7 @@ class MCPClient:
             self.cfg.base_url,
             json=body,
             headers=self._headers(),
+            timeout=self._timeout,
             ssl=None if self.cfg.verify_ssl else False,
         ) as resp:
             session_id = resp.headers.get("Mcp-Session-Id")

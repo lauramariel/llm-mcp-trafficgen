@@ -41,9 +41,27 @@ name (`api_key_env: SOME_ENV_VAR`).
 python -m trafficgen --config config.yaml
 ```
 
-Stop anytime with Ctrl+C; it will drain in-flight requests, print a final
-summary, and exit. Traffic also stops automatically once `duration_seconds`
+Stop anytime with Ctrl+C: it stops sending new requests, gives in-flight
+requests up to 5 seconds to finish, prints a final summary, and exits. Press
+Ctrl+C a second time to cancel in-flight requests immediately. Traffic also stops automatically once `duration_seconds`
 and/or `total_requests` (configured under `traffic:`) is reached.
+
+### Web UI
+
+```bash
+python -m trafficgen --ui --config config.yaml   # then open http://127.0.0.1:8080
+```
+
+A local page for editing the config as a form (LLMs, MCP servers, traffic,
+prompts, output) instead of hand-editing YAML. "Save" validates the config
+and writes it back to the `--config` file. "Save & start" also starts a run,
+and the page shows live per-LLM stats and the log. Use `--port`/`--host` to
+change where it listens. It binds to localhost by default, because anyone who
+can reach it can edit the config and start traffic.
+
+Note: saving from the UI rewrites the YAML file, so comments in it are lost.
+For API keys, use `api_key_env`; the UI shows whether each variable is set in
+the environment the UI server was started from.
 
 ## Config reference
 
